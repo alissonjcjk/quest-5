@@ -1,0 +1,179 @@
+
+# 1: avaliar quais armas podem causar dano de cada play
+# 2 verei todas as combinacoes delas
+# 3 usar a unica que pode matar o boss
+import copy
+
+conseguiu = False
+def combinacoes(indice, tam):
+    if len(indice) == 1:
+        return indice
+    combs = []
+
+    def recursao(index, temp):
+        if len(temp) == tam:
+            combs.append(tuple(temp))
+            return
+        else:
+            for i in range(index, len(indice)):
+                if indice[i] not in temp:
+                    temp.append(indice[i])
+                    recursao(0, temp)
+                    temp.pop()
+
+    recursao(0,[]) 
+    return combs
+
+
+
+def combate(vida_bos, primoss, dano_cada_player, passos_dados, sem_primos, rodada, contador):
+    if vida_bos <= 0:
+        return True, passos_dados
+    indice_primos_dano = []
+    res = []
+    total = vida_bos
+    matou = 0
+    tem = 0
+    temp = []
+    for primo_divide in range(len(primoss)): #avalia quais primos são aceitáveis
+        if vida_bos % primoss[primo_divide] == 0:
+             indice_primos_dano.append(primo_divide)
+             sem_primos = 1
+    if sem_primos == 0:
+        return False, passos_dados
+    if len(indice_primos_dano) == 1:
+        res = indice_primos_dano
+        index_subs_passos_dados = 0
+        for preenchimento_inicial in range(len(dano_cada_player)):
+            passos_dados[preenchimento_inicial].append('nada') #já que só tem um dano, todos os outros serão 'nada'
+            temp = copy.deepcopy(passos_dados)
+        for rodada_final in range(len(dano_cada_player)):
+            if rodada_final == 0:
+                index_subs_passos_dados = contador
+                contador += 1
+
+            for jogador in range(len(dano_cada_player)):
+                if jogador == 0:
+                    if res[0] <= len(dano_cada_player[jogador+rodada_final]):
+                        vida_bos -= dano_cada_player[jogador+rodada_final][res[0]]
+                        passos_dados[rodada_final][index_subs_passos_dados] = res[0] #adiciona o passo no indice do jogador da melhor combinacao.
+                        if vida_bos <= 0:
+                            return True, passos_dados
+                        else:
+                            conseguiu, passos_dados = combate(vida_bos, primoss, dano_cada_player, passos_dados, 0, 0, contador)
+                            if conseguiu:
+                                return True, passos_dados
+                            else:
+                                return False, passos_dados
+              
+            if vida_bos <=0:
+                return True, passos_dados
+            else:
+                vida_bos = total
+                passos_dados = temp
+        if vida_bos >0:
+            return False
+
+    res = combinacoes(indice_primos_dano, len(dano_cada_player)) #acha as permutações possíveis dos primos aceitáveis
+    qtd_rodadas = len(res)
+    index_dano = 0
+ #avalie o caso em que indice_prmos_dano é 1 ou seja, apenas um primo divide a vida do boss 
+    while rodada < qtd_rodadas:
+        index_dano = 0
+        while index_dano <= (len(res[rodada])): #pega cada combinacao tipo (4,6)
+            for jogador in range(len(dano_cada_player)):
+                if res[rodada][index_dano] <= len(dano_cada_player[jogador]):
+                    passos_dados[jogador].append(res[rodada][index_dano])
+                    vida_bos -= dano_cada_player[jogador][res[rodada][index_dano]]
+                    index_dano += 1
+                    tem = 1
+                if tem == 0:
+                    passos_dados[jogador].append('nada')
+                if tem == 1:
+                    tem = 0
+            index_dano = len(res[rodada])+1
+        rodada +=1
+        contador =contador + rodada + 1
+        if vida_bos <= 0:
+            matou = 1
+            return True, passos_dados
+        else:
+            conseguiu, passos_dados = combate(vida_bos, primoss, dano_cada_player, passos_dados, 0, 0, contador)
+            if conseguiu == 0:
+                for exclusao in range(len(passos_dados)):
+                    passos_dados[exclusao].pop()
+                vida_bos = total
+            else:
+                return True, passos_dados
+    if matou == 0:
+        return False, []
+
+
+
+
+def qtd_primos(qtd):
+    prim = [2,3]
+    cont = 0
+    comparar = 0
+    ajuste = 1000
+    if qtd > 3:
+        for primo in range(4,ajuste+1,1):
+            for primo1 in range(2,primo,1):
+                if primo % primo1 == 0:
+                    cont += 1
+                    primo1 = primo #para sair do loop
+            if cont == 0 and comparar < qtd-2:
+                prim.append(primo)
+                comparar += 1
+            elif cont >0:
+                cont = 0
+    else:
+        return prim
+            
+    return prim
+
+qtd_armas = 0
+nick = []
+dano_armas = []
+temp = []
+primos = 0
+qtd = []
+n_contas = int(input())
+
+
+for i in range(n_contas):
+    nick_arma = [i for i in input().split()]
+    nick.append(nick_arma[0])
+    qtd_armas = int(nick_arma[1])
+    temp = [int(i) for i in input().split()]
+    dano_armas.append(temp)
+    if len(temp) > primos:
+        primos = len(temp)
+
+vida_boss = int(input())
+se_matou = False
+indice_tentativas = []
+tentativas = []
+passo = 0
+for jogador in range(len(dano_armas)):
+    indice_tentativas.append([])
+
+qtd = qtd_primos(primos)
+se_matou, tentativas = combate(vida_boss, qtd, dano_armas, indice_tentativas, 0, 0, 0)
+if se_matou:
+    print('Felizmente conseguimos vencer!')
+    print('A seguinte sequencia de acoes pode ser usada:')
+    for jogador in range(len(nick)):
+        print(nick[jogador], end = ' ')
+        for passos in range(len(tentativas[jogador])):
+            if tentativas[jogador][passos] == 'nada':
+                print(tentativas[jogador][passos], end = ' ')
+            else:
+                passo = int(tentativas[jogador][passos])+1
+                print(f'arma_{passo}', end = ' ')
+        print()
+
+
+
+
+
